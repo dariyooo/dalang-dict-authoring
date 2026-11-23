@@ -61,8 +61,8 @@ Copier asks whether the sources change (`source_updates`), which decides how sou
   Releases are manual only.
 
 * `GitHubReleaseAsset` takes a pattern (`radkfile-*.json.zip`) for asset names that contain the version.
-* `GitHubRepo` downloads a whole repo as `.tar.gz` (e.g. code the build runs), with `path` only commits changing
-  that path count as new versions.
+* `GitHubRepo` downloads a whole repo as `.tar.gz` (e.g. code the build runs), with `path` (one or more paths
+  separated by spaces) only commits changing them count as new versions.
 
 Every source has a free text `used_for` (what the dictionary takes from it) and a version:
 the commit for `GitHubFile` and `GitHubRepo`, the release tag for `GitHubReleaseAsset`, the download date for `Url`, the declared version for `Vendored`.
@@ -141,6 +141,8 @@ Every dictionary is validated against the rules of its format before it is zippe
 
 * `ci.yml` runs on push and pull request: ruff check, ruff format check, pyright, pytest.
 * A build that runs JavaScript sets `node_version` in Copier, the workflows then set up Node.js.
+* Build outputs a repo commits besides `out/` (e.g. files another repo reads through a submodule) are listed in
+  `committed_outputs`: the update commits them with the lock and a release fails if the build changed them.
 * `release.yml` runs on a pushed tag `YYYY-MM-DD`: CI, `uv run build.py` with the tag as revision
   (`DALANG_DICT_REVISION`, fails if the build had to change `sources.lock.json`),
   then the GitHub release of the tag containing everything in `out/`, notes from `python -m dalang_dict release-notes`.
