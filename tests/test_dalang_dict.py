@@ -10,6 +10,7 @@ import pytest
 from dalang_dict import (
     GitHubFile,
     GitHubReleaseAsset,
+    GitHubRepo,
     Url,
     Vendored,
     build_index,
@@ -367,6 +368,24 @@ def test_github_release_asset_is_locked_to_latest_release(tmp_path, monkeypatch)
 def test_github_release_asset_url():
     asset = GitHubReleaseAsset("model.zip", "owner/repo", "weights.zip")
     assert asset.url("v2.0") == "https://github.com/owner/repo/releases/download/v2.0/weights.zip"
+
+
+def test_github_release_asset_pattern_matches_one_asset(monkeypatch):
+    release = {"assets": [{"name": "radkfile-3.6.2+1.json.zip"}, {"name": "radkfile-3.6.2+1.json.tgz"}]}
+    monkeypatch.setattr(sources, "_github_api", lambda path: release)
+    asset = GitHubReleaseAsset("radkfile.json.zip", "owner/repo", "radkfile-*.json.zip")
+    assert asset.url("3.6.2+1") == "https://github.com/owner/repo/releases/download/3.6.2+1/radkfile-3.6.2+1.json.zip"
+    with pytest.raises(ValueError, match="not one asset"):
+        GitHubReleaseAsset("radk", "owner/repo", "radkfile-*").url("3.6.2+1")
+
+
+def test_github_repo_is_locked_to_latest_commit_of_path(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sources, "_github_api", lambda path: calls.append(path) or [{"sha": "abc"}])
+    repo = GitHubRepo("yomitan.tar.gz", "yomidevs/yomitan", path="ext/js/language")
+    assert repo.latest_version() == "abc"
+    assert calls == ["repos/yomidevs/yomitan/commits?sha=main&path=ext/js/language&per_page=1"]
+    assert repo.url("abc") == "https://codeload.github.com/yomidevs/yomitan/tar.gz/abc"
 
 
 def test_manifest_changed():

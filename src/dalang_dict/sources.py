@@ -11,12 +11,14 @@ into the manifest so each release lists the data it was built from.
 """
 
 import datetime
+import fnmatch
 import hashlib
 import http.client
 import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -59,7 +61,11 @@ class GitHubFile:
 
 @dataclass(frozen=True)
 class GitHubReleaseAsset:
-    """The asset `asset` of the GitHub repo `repo` (`owner/name`), locked to the tag of its latest release."""
+    """The asset `asset` of the GitHub repo `repo` (`owner/name`), locked to the tag of its latest release.
+
+    `asset` may be a pattern (`*`, `?`, `[...]`) for asset names that contain the version,
+    e.g. `radkfile-*.json.zip`, it has to match exactly one asset of the release.
+    """
 
     name: str
     repo: str
@@ -71,7 +77,42 @@ class GitHubReleaseAsset:
         return _github_api(f"repos/{self.repo}/releases/latest")["tag_name"]
 
     def url(self, version: str) -> str:
-        return f"https://github.com/{self.repo}/releases/download/{version}/{self.asset}"
+        return f"https://github.com/{self.repo}/releases/download/{version}/{self.asset_name(version)}"
+
+    def asset_name(self, version: str) -> str:
+        if not any(char in self.asset for char in "*?["):
+            return self.asset
+        release = _github_api(f"repos/{self.repo}/releases/tags/{urllib.parse.quote(version)}")
+        names = [asset["name"] for asset in release["assets"] if fnmatch.fnmatchcase(asset["name"], self.asset)]
+        if len(names) != 1:
+            raise ValueError(f"'{self.asset}' matches {names} in release {version} of {self.repo}, not one asset")
+        return names[0]
+
+
+@dataclass(frozen=True)
+class GitHubRepo:
+    """The GitHub repo `repo` (`owner/name`) as `.tar.gz`, locked to the latest commit on `branch`.
+
+    With `path` only commits changing that path count, e.g. the folder the build reads.
+    Extract it with `tarfile.open(path).extractall(target, filter="data")`, the files are in one top folder.
+    """
+
+    name: str
+    repo: str
+    branch: str = "main"
+    path: str = ""
+    used_for: str = ""
+    kind: str = "github-repo"
+
+    def latest_version(self) -> str:
+        path = f"&path={self.path}" if self.path else ""
+        commits = _github_api(f"repos/{self.repo}/commits?sha={self.branch}{path}&per_page=1")
+        if not commits:
+            raise ValueError(f"No commit found on {self.repo}@{self.branch}")
+        return commits[0]["sha"]
+
+    def url(self, version: str) -> str:
+        return f"https://codeload.github.com/{self.repo}/tar.gz/{version}"
 
 
 @dataclass(frozen=True)
@@ -106,11 +147,12 @@ class Vendored:
 
 
 # Sources that are downloaded and locked in sources.lock.json
-LockedSource = GitHubFile | GitHubReleaseAsset | Url
+LockedSource = GitHubFile | GitHubReleaseAsset | GitHubRepo | Url
 Source = LockedSource | Vendored
 SOURCE_TYPES: dict[str, type[LockedSource]] = {
     "github-file": GitHubFile,
     "github-release-asset": GitHubReleaseAsset,
+    "github-repo": GitHubRepo,
     "url": Url,
 }
 

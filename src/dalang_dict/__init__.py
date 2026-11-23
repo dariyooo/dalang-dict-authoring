@@ -6,6 +6,7 @@ from dalang_dict.release import manifest_changed, release_changed, release_notes
 from dalang_dict.sources import (
     GitHubFile,
     GitHubReleaseAsset,
+    GitHubRepo,
     Source,
     Url,
     Vendored,
@@ -20,6 +21,7 @@ __all__ = [
     "FORMATS",
     "GitHubFile",
     "GitHubReleaseAsset",
+    "GitHubRepo",
     "Source",
     "Url",
     "Vendored",
