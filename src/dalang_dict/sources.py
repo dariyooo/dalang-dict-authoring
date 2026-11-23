@@ -93,8 +93,8 @@ class GitHubReleaseAsset:
 class GitHubRepo:
     """The GitHub repo `repo` (`owner/name`) as `.tar.gz`, locked to the latest commit on `branch`.
 
-    With `path` only commits changing that path count, e.g. the folder the build reads.
-    Extract it with `tarfile.open(path).extractall(target, filter="data")`, the files are in one top folder.
+    With `path` (one or more paths separated by spaces) only commits changing them count, e.g. the folders the build
+    reads. Extract it with `tarfile.open(path).extractall(target, filter="data")`, the files are in one top folder.
     """
 
     name: str
@@ -105,11 +105,16 @@ class GitHubRepo:
     kind: str = "github-repo"
 
     def latest_version(self) -> str:
-        path = f"&path={self.path}" if self.path else ""
-        commits = _github_api(f"repos/{self.repo}/commits?sha={self.branch}{path}&per_page=1")
-        if not commits:
-            raise ValueError(f"No commit found on {self.repo}@{self.branch}")
-        return commits[0]["sha"]
+        newest: tuple[str, str] | None = None  # (commit date, sha) of the newest commit changing one of the paths
+        for path in self.path.split() or [""]:
+            query = f"&path={path}" if path else ""
+            commits = _github_api(f"repos/{self.repo}/commits?sha={self.branch}{query}&per_page=1")
+            if commits:
+                commit = (commits[0]["commit"]["committer"]["date"], commits[0]["sha"])
+                newest = max(newest or commit, commit)
+        if newest is None:
+            raise ValueError(f"No commit of '{self.path}' found on {self.repo}@{self.branch}")
+        return newest[1]
 
     def url(self, version: str) -> str:
         return f"https://codeload.github.com/{self.repo}/tar.gz/{version}"

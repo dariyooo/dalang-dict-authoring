@@ -379,13 +379,22 @@ def test_github_release_asset_pattern_matches_one_asset(monkeypatch):
         GitHubReleaseAsset("radk", "owner/repo", "radkfile-*").url("3.6.2+1")
 
 
-def test_github_repo_is_locked_to_latest_commit_of_path(monkeypatch):
+def test_github_repo_is_locked_to_newest_commit_of_its_paths(monkeypatch):
+    commits = {
+        "ext/js/language": {"sha": "old", "commit": {"committer": {"date": "2026-11-01T00:00:00Z"}}},
+        "test/language": {"sha": "new", "commit": {"committer": {"date": "2026-11-20T00:00:00Z"}}},
+    }
     calls = []
-    monkeypatch.setattr(sources, "_github_api", lambda path: calls.append(path) or [{"sha": "abc"}])
-    repo = GitHubRepo("yomitan.tar.gz", "yomidevs/yomitan", path="ext/js/language")
-    assert repo.latest_version() == "abc"
-    assert calls == ["repos/yomidevs/yomitan/commits?sha=main&path=ext/js/language&per_page=1"]
-    assert repo.url("abc") == "https://codeload.github.com/yomidevs/yomitan/tar.gz/abc"
+
+    def api(path):
+        calls.append(path)
+        return [commits[path.split("&path=")[1].split("&")[0]]]
+
+    monkeypatch.setattr(sources, "_github_api", api)
+    repo = GitHubRepo("yomitan.tar.gz", "yomidevs/yomitan", path="ext/js/language test/language")
+    assert repo.latest_version() == "new"
+    assert calls[0] == "repos/yomidevs/yomitan/commits?sha=main&path=ext/js/language&per_page=1"
+    assert repo.url("new") == "https://codeload.github.com/yomidevs/yomitan/tar.gz/new"
 
 
 def test_manifest_changed():
