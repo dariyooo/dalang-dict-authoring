@@ -31,7 +31,11 @@ PIN_KEYS = ("version", "sha256")
 # Fields that only describe a source, changing them does not relock it
 DESCRIPTION_KEYS = ("used_for",)
 
+# Identifies the downloads, some servers (e.g. jiten.moe) reject the fake browser agents bots use
+USER_AGENT = "dalang-dict-utils (+https://github.com/dariyooo/dalang-dict-utils)"
 DOWNLOAD_RETRIES = 10
+# Client errors that can go away on their own, every other 4xx fails the download right away
+RETRY_CLIENT_ERRORS = {408, 416, 429}
 DOWNLOAD_TIMEOUT = 20
 # Some servers (e.g. Tatoeba's) stall at a few KB/s without closing the connection, which no timeout catches
 MIN_DOWNLOAD_SPEED = 50 * 1024
@@ -174,7 +178,7 @@ def _record_use(source: Source, version: str) -> None:
 
 
 def _github_api(path: str) -> Any:
-    request = urllib.request.Request(f"https://api.github.com/{path}")
+    request = urllib.request.Request(f"https://api.github.com/{path}", headers={"User-Agent": USER_AGENT})
     if token := os.environ.get("GITHUB_TOKEN"):
         request.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(request) as response:
@@ -192,7 +196,7 @@ def _sha256(path: Path) -> str:
 def _download_part(url: str, part: Path) -> None:
     """Downloads `url` to `part`, continuing a partial download, raises if the download stalls or is cut off."""
     resume_at = part.stat().st_size if part.exists() else 0
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": USER_AGENT}
     if resume_at:
         headers["Range"] = f"bytes={resume_at}-"
     request = urllib.request.Request(url, headers=headers)
@@ -229,7 +233,8 @@ def _download(url: str, path: Path) -> None:
         except (OSError, http.client.HTTPException) as e:  # URLError, HTTPError, timeouts, cut off responses
             if isinstance(e, urllib.error.HTTPError) and e.code == 416:
                 part.unlink(missing_ok=True)  # the partial download is not a prefix of the file anymore
-            if attempt == DOWNLOAD_RETRIES:
+            status = e.code if isinstance(e, urllib.error.HTTPError) else None
+            if attempt == DOWNLOAD_RETRIES or (status and 400 <= status < 500 and status not in RETRY_CLIENT_ERRORS):
                 raise
             wait = min(5 * attempt, 30)
             print(f"Attempt {attempt}/{DOWNLOAD_RETRIES} failed ({e}), resuming in {wait}s...")

@@ -3,6 +3,7 @@ import hashlib
 import http.server
 import json
 import threading
+import urllib.error
 import zipfile
 
 import pytest
@@ -474,3 +475,26 @@ def test_download_resumes_cut_off_download(tmp_path, monkeypatch):
         server.shutdown()
     assert (tmp_path / "file").read_bytes() == _FlakyHandler.CONTENT
     assert _FlakyHandler.requests == [None, f"bytes={len(_FlakyHandler.CONTENT) // 2}-"]
+
+
+class _TeapotHandler(http.server.BaseHTTPRequestHandler):
+    agents: list = []
+
+    def do_GET(self):
+        self.agents.append(self.headers["User-Agent"])
+        self.send_error(418)
+
+    def log_message(self, format, *args):
+        pass
+
+
+def test_download_fails_on_client_error_without_retrying(tmp_path, monkeypatch):
+    monkeypatch.setattr(sources.time, "sleep", lambda seconds: None)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _TeapotHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        with pytest.raises(urllib.error.HTTPError, match="418"):
+            sources._download(f"http://127.0.0.1:{server.server_port}/file", tmp_path / "file")
+    finally:
+        server.shutdown()
+    assert _TeapotHandler.agents == [sources.USER_AGENT]
