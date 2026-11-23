@@ -18,6 +18,10 @@ name: Dictionary Update
 on:
   workflow_call:
     inputs:
+      node-version:
+        description: Node.js version to set up when the build runs JavaScript, empty for none
+        type: string
+        default: ""
       build-command:
         description: Command that builds the dictionaries into out/
         type: string
@@ -44,6 +48,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+
+      - uses: actions/setup-node@v4
+        if: inputs.node-version != ''
+        with:
+          node-version: ${{ inputs.node-version }}
 
       - name: Install dependencies
         run: uv sync --locked

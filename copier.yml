@@ -53,6 +53,11 @@ dalang_dict_utils_tag:
   help: dalang-dict-utils tag for the package and the reusable workflows
   default: v0.3.4
 
+node_version:
+  type: str
+  help: Node.js version if the build runs JavaScript (e.g. 22), empty if not
+  default: ""
+
 source_updates:
   type: bool
   help: >-
