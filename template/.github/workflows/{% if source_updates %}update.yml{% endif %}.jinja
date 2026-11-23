@@ -10,7 +10,13 @@ permissions:
 
 jobs:
   update:
-    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-update.yml@{{ dalang_dict_utils_tag }}{% if node_version %}
+    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-update.yml@{{ dalang_dict_utils_tag }}
+{%- if node_version or committed_outputs %}
     with:
+{%- if node_version %}
       node-version: "{{ node_version }}"
+{%- endif %}
+{%- if committed_outputs %}
+      commit-paths: "sources.lock.json {{ committed_outputs }}"
+{%- endif %}
 {%- endif %}

@@ -58,6 +58,13 @@ node_version:
   help: Node.js version if the build runs JavaScript (e.g. 22), empty if not
   default: ""
 
+committed_outputs:
+  type: str
+  help: >-
+    Build outputs the repo commits besides out/, space separated (e.g. files another repo reads through a submodule),
+    empty if none. The update commits them with the lock, a release fails if they are not up to date
+  default: ""
+
 source_updates:
   type: bool
   help: >-

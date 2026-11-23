@@ -20,6 +20,10 @@ name: Dictionary Release
 on:
   workflow_call:
     inputs:
+      commit-paths:
+        description: Paths the build must leave unchanged, besides the lock e.g. committed build outputs
+        type: string
+        default: sources.lock.json
       node-version:
         description: Node.js version to set up when the build runs JavaScript, empty for none
         type: string
@@ -66,10 +70,13 @@ jobs:
         run: ${{ inputs.build-command }}
 
       - name: Check sources are locked
+        env:
+          COMMIT_PATHS: ${{ inputs.commit-paths }}
         run: |
-          if [ -n "$(git status --porcelain -- sources.lock.json)" ]; then
-            echo "The build changed sources.lock.json, commit the lock first (run \`uv run build.py\` locally)." >&2
-            git diff -- sources.lock.json >&2
+          # shellcheck disable=SC2086 # the paths are split on purpose
+          if [ -n "$(git status --porcelain -- $COMMIT_PATHS)" ]; then
+            echo "The build changed committed files, run \`uv run build.py\` locally and commit them first." >&2
+            git status --short -- $COMMIT_PATHS >&2
             exit 1
           fi
 

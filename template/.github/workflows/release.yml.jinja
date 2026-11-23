@@ -9,14 +9,21 @@ permissions:
 
 jobs:
   ci:
-    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-ci.yml@{{ dalang_dict_utils_tag }}{% if node_version %}
+    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-ci.yml@{{ dalang_dict_utils_tag }}
+{%- if node_version %}
     with:
       node-version: "{{ node_version }}"
 {%- endif %}
 
   release:
     needs: ci
-    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-release.yml@{{ dalang_dict_utils_tag }}{% if node_version %}
+    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-release.yml@{{ dalang_dict_utils_tag }}
+{%- if node_version or committed_outputs %}
     with:
+{%- if node_version %}
       node-version: "{{ node_version }}"
+{%- endif %}
+{%- if committed_outputs %}
+      commit-paths: "sources.lock.json {{ committed_outputs }}"
+{%- endif %}
 {%- endif %}

@@ -26,6 +26,10 @@ on:
         description: Command that builds the dictionaries into out/
         type: string
         default: uv run build.py
+      commit-paths:
+        description: Paths the update commits, besides the lock e.g. build outputs other repos read from the repo
+        type: string
+        default: sources.lock.json
       max-entry-drop:
         description: Largest allowed share of lost entries per bank compared to the previous release
         type: number
@@ -104,10 +108,13 @@ jobs:
 
       - name: Commit updated sources
         if: steps.sources.outputs.changed == 'true'
+        env:
+          COMMIT_PATHS: ${{ inputs.commit-paths }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add sources.lock.json
+          # shellcheck disable=SC2086 # the paths are split on purpose
+          git add -A -- $COMMIT_PATHS
           git commit -m "chore: update sources"
           git push
 
