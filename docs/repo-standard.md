@@ -20,6 +20,8 @@ New repos are created from the Copier template in this repo (see [README](../REA
   as `{asset}.manifest.json`.
   Variants (languages, audio formats) are `{asset}-{variant}.zip`.
   A `dakanji-dictionary` variant of a Yomitan dictionary (e.g. with a manual) is `{asset}-dadb.zip`.
+* Names the apps download are kept, even when they do not follow these rules: e.g. `krad-radk-dadb.zip`,
+  which DaKanji's database build downloads, or the `{language}-transforms.json` [assets](#assets).
 
 ## Layout
 
@@ -50,7 +52,7 @@ stats/                optional, committed build statistics
 
 Copier asks whether the sources change (`source_updates`), which decides how sources are handled:
 
-* **Sources change**: declare them in code (`GitHubFile`, `GitHubReleaseAsset`, `Url`) and download them with `dalang_dict.fetch()`,
+* **Sources change**: declare them in code (`GitHubFile`, `GitHubReleaseAsset`, `GitHubRepo`, `Url`) and download them with `dalang_dict.fetch()`,
   which caches in `tmp/sources/` and locks every source to a version + sha256 in the committed `sources.lock.json`.
   A source missing from the lock is locked to its latest version on the next build.
   The *Update* workflow updates the lock weekly (`python -m dalang_dict update-sources`) and releases on changes.
@@ -58,8 +60,12 @@ Copier asks whether the sources change (`source_updates`), which decides how sou
   regardless of their size, and declare them as `Vendored` with the retrieval date as version.
   Releases are manual only.
 
+* `GitHubReleaseAsset` takes a pattern (`radkfile-*.json.zip`) for asset names that contain the version.
+* `GitHubRepo` downloads a whole repo as `.tar.gz` (e.g. code the build runs), with `path` only commits changing
+  that path count as new versions.
+
 Every source has a free text `used_for` (what the dictionary takes from it) and a version:
-the commit for `GitHubFile`, the release tag for `GitHubReleaseAsset`, the download date for `Url`, the declared version for `Vendored`.
+the commit for `GitHubFile` and `GitHubRepo`, the release tag for `GitHubReleaseAsset`, the download date for `Url`, the declared version for `Vendored`.
 `fetch()` records both, `package_dictionary()` writes them into the manifest and the release notes list them
 together with the changes since the previous release (source versions, entry counts).
 
@@ -87,12 +93,27 @@ and the manifest records it:
 | `dakanji-dictionary` | the apps | `yomitan` + `audio_list.json` (audio sources), manual (`manual.pdf` or `manual.md` + `manual_icon.svg`) |
 | `dakanji-examples` | the apps | `index.json`, `example_bank_{n}.json`, `example_text_bank_{n}.txt` + `example_text_meta_bank_{n}.json`, `tag_bank_{n}.json`, audio files |
 | `dakanji-audio` | the apps | `yomitan_index.json`, audio files named `Term [Reading] (Pitch).ext`, or `index.json` / `entries.json` mapping them |
+| `dakanji-radicals` | the apps | `index.json`, one radk JSON (`radicals` with their `strokeCount`) and one krad JSON (`kanji` with their radicals), named so they contain `radk` / `krad` |
+| `dakanji-stroke-order` | the apps | `index.json`, KanjiVG `.svg` files |
 
 * Audio files (`aac mp3 ogg opus flac wav`, lowercase) are always in `audios/`, everything else in the zip root.
 * A manual is only read in a `dakanji-dictionary`.
 * See the DaLang authoring manual for the entry layouts.
-  Radicals (radk + krad JSON) and stroke order (KanjiVG `.svg`) are imported by DaLang too, they become formats here once
-  a repo builds them.
+  The formats cover every archive type DaLang imports.
+
+## Assets
+
+Files the apps download as they are, without zip and index (e.g. at startup), are assets.
+`dalang_dict.package_assets(name, files, format)` validates them, copies them into `out/` under their release names
+and writes `out/{name}.manifest.json`, so they are released only when they change, like dictionaries.
+
+| Format | Used by | Files |
+|---|---|---|
+| `yomitan-deinflection-rules` | the apps' deconjugation | `{language}-transforms.json` converted from Yomitan's `*-transforms.js`: `language`, `conditions`, `transforms` with `suffix` / `prefix` / `wholeWord` rules (`inflected`, `base`, `conditionsIn`, `conditionsOut`) |
+
+* Rules of other types (Yomitan's regex rules, `other`) are allowed but skipped by the apps,
+  the manifest counts them as `{file} (unsupported)`.
+* Asset names are what the apps look for, so they never change.
 
 ## Packaging
 
@@ -119,6 +140,7 @@ Every dictionary is validated against the rules of its format before it is zippe
 ## CI and releases
 
 * `ci.yml` runs on push and pull request: ruff check, ruff format check, pyright, pytest.
+* A build that runs JavaScript sets `node_version` in Copier, the workflows then set up Node.js.
 * `release.yml` runs on a pushed tag `YYYY-MM-DD`: CI, `uv run build.py` with the tag as revision
   (`DALANG_DICT_REVISION`, fails if the build had to change `sources.lock.json`),
   then the GitHub release of the tag containing everything in `out/`, notes from `python -m dalang_dict release-notes`.

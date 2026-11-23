@@ -1,8 +1,8 @@
 # dalang-dict-utils
 
-Utilities and repo template for building DaLang dictionaries (the Yomitan format and the DaKanji formats for examples, audio and dictionaries with extensions).
+Utilities and repo template for building DaLang dictionaries (the Yomitan format and the DaKanji formats for examples, audio, radicals, stroke order and dictionaries with extensions) and assets like deinflection rules.
 
-* **[Repo standard](docs/repo-standard.md)**: the rules every dictionary repo follows (naming, layout, tooling, sources, index.json, formats, packaging, validation, CI and releases).
+* **[Repo standard](docs/repo-standard.md)**: the rules every dictionary repo follows (naming, layout, tooling, sources, index.json, formats, assets, packaging, validation, CI and releases).
 * **Copier template** (`copier.yml`, `template/`): creates new dictionary repos that follow the standard and keeps them in sync with it.
 * **Reusable workflows** (`.github/workflows/dict-ci.yml`, `dict-release.yml`, `dict-update.yml`): CI, releases and automatic source updates of the dictionary repos.
 * **`dalang_dict` package** (`src/dalang_dict/`): locked source downloads, index.json, banks, validation per format, packaging and release manifests.
