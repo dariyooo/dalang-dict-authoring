@@ -15,12 +15,14 @@ from dalang_dict import (
     build_index,
     fetch,
     manifest_changed,
+    package_assets,
     package_dictionary,
     release_changed,
     release_notes,
     sources,
     update_sources,
     used_sources,
+    validate_assets,
     validate_dictionary_dir,
     write_banks,
 )
@@ -128,6 +130,9 @@ def test_package_examples_from_written_banks(tmp_path):
 
 INDEX = build_index("Test", "owner/repo", "Test_Dict")
 TERM_BANK = [["猫", "ねこ", "", "", 0, ["cat"], 1, ""]]
+RADK = {"radicals": {"一": {"strokeCount": 1, "code": None, "kanji": ["一"]}}}
+KRAD = {"kanji": {"一": ["一"]}}
+KANJIVG = '<!-- kvg:element="x" --><g id="kvg:StrokePaths_04e00" kvg:element="一"></g>'
 
 # format, files (archive name -> content), expected error or None
 FORMAT_CASES = [
@@ -154,6 +159,27 @@ FORMAT_CASES = [
     ("dakanji-audio", {"yomitan_index.json": INDEX, "猫.mp3": ""}, "No audio files"),
     ("dakanji-audio", {"yomitan_index.json": INDEX, "audios/猫.mp3": "", "manual.pdf": ""}, "Unexpected files"),
     ("dakanji-audio", {"index.json": INDEX, "audios/猫.mp3": ""}, "yomitan_index.json"),
+    ("dakanji-radicals", {"index.json": INDEX, "radkfile.json": RADK, "kradfile.json": KRAD}, None),
+    ("dakanji-radicals", {"index.json": INDEX, "radkfile.json": RADK}, "exactly one"),
+    (
+        "dakanji-radicals",
+        {"index.json": INDEX, "radkfile.json": {"radicals": {"一": {}}}, "kradfile.json": KRAD},
+        "strokeCount",
+    ),
+    (
+        "dakanji-radicals",
+        {"index.json": INDEX, "radkfile.json": RADK, "kradfile.json": {"kanji": {"一": "一"}}},
+        "list of radicals",
+    ),
+    (
+        "dakanji-radicals",
+        {"index.json": INDEX, "radkfile.json": RADK, "kradfile.json": KRAD, "a.txt": ""},
+        "Unexpected files",
+    ),
+    ("dakanji-stroke-order", {"index.json": INDEX, "04e00.svg": KANJIVG}, None),
+    ("dakanji-stroke-order", {"index.json": INDEX, "04e00.svg": '<!-- kvg:element="一" -->'}, "no kvg:element"),
+    ("dakanji-stroke-order", {"index.json": INDEX, "kanji/04e00.svg": KANJIVG}, "zip root"),
+    ("dakanji-stroke-order", {"index.json": INDEX}, "No SVG files"),
 ]
 
 
@@ -166,6 +192,78 @@ def test_validate_format(tmp_path, format, files, error):
     else:
         with pytest.raises((ValueError, FileNotFoundError), match=error):
             validate_dictionary_dir(tmp_path, format)
+
+
+def test_package_radicals_counts_radicals_and_kanji(tmp_path):
+    package_dictionary(
+        "Test_Radicals",
+        INDEX,
+        {},
+        extra_files={
+            "radkfile.json": _write(tmp_path / "r.json", RADK),
+            "kradfile.json": _write(tmp_path / "k.json", KRAD),
+        },
+        format="dakanji-radicals",
+        tmp_dir=tmp_path / "tmp",
+        out_dir=tmp_path / "out",
+    )
+    manifest = json.loads((tmp_path / "out" / "Test_Radicals.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["entries"] == {"kanji": 1, "radicals": 1}
+
+
+def _rule(type: str, **fields) -> dict:
+    return {"type": type, "conditionsIn": ["v"], "conditionsOut": ["v"], **fields}
+
+
+def _transforms(*rules: dict) -> dict:
+    return {
+        "language": "ja",
+        "conditions": {"v": {"name": "Verb", "isDictionaryForm": True}},
+        "transforms": {"past": {"name": "past", "rules": list(rules)}},
+    }
+
+
+SUFFIX_RULE = _rule("suffix", inflected="た", base="る")
+
+# file name, content, expected error or None
+DEINFLECTION_CASES = [
+    ("japanese-transforms.json", _transforms(SUFFIX_RULE, _rule("other", isInflected={})), None),
+    ("japanese.json", _transforms(SUFFIX_RULE), "-transforms.json"),
+    ("japanese-transforms.json", {"language": "ja", "conditions": {}}, "'conditions' and 'transforms'"),
+    ("japanese-transforms.json", _transforms(_rule("regex")), "unknown type"),
+    ("japanese-transforms.json", _transforms(_rule("prefix", isInflected={})), "'inflected' and 'base'"),
+    (
+        "japanese-transforms.json",
+        _transforms(_rule("suffix", inflected="た", base="る", conditionsIn=["x"])),
+        "unknown conditions",
+    ),
+]
+
+
+@pytest.mark.parametrize(("name", "content", "error"), DEINFLECTION_CASES)
+def test_validate_deinflection_rules(tmp_path, name, content, error):
+    files = {name: _write(tmp_path / name, content)}
+    if error is None:
+        validate_assets(files, "yomitan-deinflection-rules")
+    else:
+        with pytest.raises(ValueError, match=error):
+            validate_assets(files, "yomitan-deinflection-rules")
+
+
+def test_package_assets_copies_files_and_counts_unsupported_rules(tmp_path, monkeypatch):
+    monkeypatch.setenv("DALANG_DICT_REVISION", "2026-11-24")
+    path = _write(tmp_path / "rules.json", _transforms(SUFFIX_RULE, _rule("other", isInflected={})))
+    out = tmp_path / "out"
+    paths = package_assets(
+        "rules", {"japanese-transforms.json": path}, "yomitan-deinflection-rules", sources={}, out_dir=out
+    )
+
+    assert paths == [out / "japanese-transforms.json"]
+    assert paths[0].read_bytes() == path.read_bytes()
+    manifest = json.loads((out / "rules.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["revision"] == "2026-11-24"
+    assert manifest["entries"] == {"japanese-transforms": 2, "japanese-transforms (unsupported)": 1}
+    assert release_changed(out, tmp_path / "previous") == ["rules"]
 
 
 def test_validate_rejects_unknown_format(tmp_path):

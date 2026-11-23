@@ -1,7 +1,9 @@
-"""Validation of dictionary directories, one set of rules per format (see `FORMATS`).
+"""Validation of dictionaries (see `FORMATS`) and assets (see `ASSET_FORMATS`), one set of rules per format.
 
-Every format checks the layout DaLang's importer expects (which files, where) and validates the files it has a
-schema for: Yomitan's schemas are vendored in schemas/yomitan/, DaKanji's are planned (see schemas/dadb/README.md).
+Every dictionary format checks the layout DaLang's importer expects (which files, where) and validates the files
+it has a schema for: Yomitan's schemas are vendored in schemas/yomitan/, DaKanji's are planned
+(see schemas/dadb/README.md).
+Assets are files the apps download as they are (no zip, no index), their formats check what the apps read.
 """
 
 import json
@@ -36,6 +38,12 @@ AUDIO_EXTENSIONS = {".aac", ".mp3", ".ogg", ".opus", ".flac", ".wav"}
 AUDIO_METADATA_FILES = {"index.json", "entries.json"}
 AUDIO_LIST_FILE = "audio_list.json"
 MANUAL_FILES = {"manual.pdf", "manual.md", "manual_icon.svg"}
+# DaLang detects a radicals archive by a file whose name contains `radk` and one whose name contains `krad`
+RADK_PATTERN = "radk"
+KRAD_PATTERN = "krad"
+SVG_EXTENSION = ".svg"
+XML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+KANJIVG_ELEMENT = re.compile(r'kvg:element="[^"]+"')
 
 
 def _load(path: Path):
@@ -76,9 +84,9 @@ def _check_banks(directory: Path, files: list[str], banks: dict[str, str | None]
     return found
 
 
-def _reject_unexpected(files: set[str]) -> None:
+def _reject_unexpected(files: set[str], hint: str = f", audio files belong in '{AUDIO_DIR}/'") -> None:
     if files:
-        raise ValueError(f"Unexpected files {sorted(files)[:5]}, audio files belong in '{AUDIO_DIR}/'")
+        raise ValueError(f"Unexpected files {sorted(files)[:5]}{hint}")
 
 
 def _check_yomitan(directory: Path, files: list[str]) -> None:
@@ -117,6 +125,48 @@ def _check_dakanji_audio(directory: Path, files: list[str]) -> None:
     _reject_unexpected(set(files) - audio_files - AUDIO_METADATA_FILES - {"yomitan_index.json"})
 
 
+def _root_files(files: list[str]) -> None:
+    nested = [name for name in files if "/" in name]
+    if nested:
+        raise ValueError(f"Files {nested[:5]} belong in the zip root")
+
+
+def _check_dakanji_radicals(directory: Path, files: list[str]) -> None:
+    # The radk file lists the radicals with their stroke count, the krad file the radicals of every kanji.
+    # DaLang also fails on a krad radical missing from the radk file,
+    # that check needs DaLang's lookup tables and stays there.
+    _root_files(files)
+    radk = [name for name in files if RADK_PATTERN in name]
+    krad = [name for name in files if KRAD_PATTERN in name and name not in radk]
+    if len(radk) != 1 or len(krad) != 1:
+        raise ValueError(f"Need exactly one '{RADK_PATTERN}' and one '{KRAD_PATTERN}' file, found {radk} and {krad}")
+    radicals = _load(directory / radk[0]).get("radicals")
+    if not isinstance(radicals, dict) or not radicals:
+        raise ValueError(f"'{radk[0]}' has no 'radicals'")
+    for radical, info in radicals.items():
+        if not isinstance(info, dict) or not isinstance(info.get("strokeCount"), int):
+            raise ValueError(f"Radical '{radical}' in '{radk[0]}' has no 'strokeCount'")
+    kanji = _load(directory / krad[0]).get("kanji")
+    if not isinstance(kanji, dict) or not kanji:
+        raise ValueError(f"'{krad[0]}' has no 'kanji'")
+    for character, parts in kanji.items():
+        if not isinstance(parts, list) or not all(isinstance(part, str) for part in parts):
+            raise ValueError(f"Kanji '{character}' in '{krad[0]}' has no list of radicals")
+    _reject_unexpected(set(files) - {radk[0], krad[0], "index.json"}, hint="")
+
+
+def _check_dakanji_stroke_order(directory: Path, files: list[str]) -> None:
+    # KanjiVG files, DaLang reads the character from the `kvg:element` of the first group outside comments
+    _root_files(files)
+    svgs = [name for name in files if name.endswith(SVG_EXTENSION)]
+    if not svgs:
+        raise ValueError("No SVG files")
+    for name in svgs:
+        if not KANJIVG_ELEMENT.search(XML_COMMENT.sub("", (directory / name).read_text(encoding="utf-8"))):
+            raise ValueError(f"'{name}' has no kvg:element")
+    _reject_unexpected(set(files) - set(svgs) - {"index.json"}, hint="")
+
+
 @dataclass(frozen=True)
 class Format:
     index_file: str
@@ -129,6 +179,8 @@ FORMATS = {
     "dakanji-dictionary": Format("index.json", _check_dakanji_dictionary),
     "dakanji-examples": Format("index.json", _check_dakanji_examples),
     "dakanji-audio": Format("yomitan_index.json", _check_dakanji_audio),
+    "dakanji-radicals": Format("index.json", _check_dakanji_radicals),
+    "dakanji-stroke-order": Format("index.json", _check_dakanji_stroke_order),
 }
 
 
@@ -143,3 +195,86 @@ def validate_dictionary_dir(directory: Path, format: str = "yomitan") -> None:
     dictionary_format = get_format(format)
     _validate_json(directory / dictionary_format.index_file, INDEX_SCHEMA)
     dictionary_format.check(directory, list_files(directory))
+
+
+# Yomitan's deinflection rules as written by converting its `*-transforms.js` files
+TRANSFORMS_FILE = re.compile(r"^[a-z]+(-[a-z]+)*-transforms\.json$")
+# Rule types DaLang reads, it skips the others (regex rules Yomitan names `other`)
+SUPPORTED_RULE_TYPES = {"suffix", "prefix", "wholeWord"}
+RULE_TYPES = SUPPORTED_RULE_TYPES | {"other"}
+
+
+def _strings(value) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _check_transforms(name: str, rules: dict) -> None:
+    """Checks one transforms file against what DaLang's transform loader reads."""
+    if not isinstance(rules.get("language"), str):
+        raise ValueError(f"'{name}' has no 'language'")
+    conditions, transforms = rules.get("conditions"), rules.get("transforms")
+    if not isinstance(conditions, dict) or not isinstance(transforms, dict) or not transforms:
+        raise ValueError(f"'{name}' needs 'conditions' and 'transforms'")
+    for key, condition in conditions.items():
+        if not isinstance(condition, dict) or not isinstance(condition.get("name"), str):
+            raise ValueError(f"Condition '{key}' in '{name}' has no 'name'")
+        sub_conditions = condition.get("subConditions", [])
+        if not _strings(sub_conditions) or not set(sub_conditions) <= conditions.keys():
+            raise ValueError(f"Condition '{key}' in '{name}' has unknown sub conditions")
+    for key, transform in transforms.items():
+        if not isinstance(transform, dict) or not isinstance(transform.get("rules"), list):
+            raise ValueError(f"Transform '{key}' in '{name}' has no 'rules'")
+        for rule in transform["rules"]:
+            if not isinstance(rule, dict) or rule.get("type") not in RULE_TYPES:
+                raise ValueError(f"Transform '{key}' in '{name}' has a rule of unknown type: {rule}")
+            if rule["type"] in SUPPORTED_RULE_TYPES and not all(
+                isinstance(rule.get(field), str) for field in ("inflected", "base")
+            ):
+                raise ValueError(f"A {rule['type']} rule of '{key}' in '{name}' needs 'inflected' and 'base'")
+            used = rule.get("conditionsIn", []) + rule.get("conditionsOut", [])
+            if not _strings(used) or not set(used) <= conditions.keys():
+                raise ValueError(f"A rule of '{key}' in '{name}' uses unknown conditions: {sorted(set(used))}")
+
+
+def _check_deinflection_rules(files: dict[str, Path]) -> None:
+    for name, path in files.items():
+        if not TRANSFORMS_FILE.match(name):
+            raise ValueError(f"'{name}' is not named '{{language}}-transforms.json'")
+        _check_transforms(name, _load(path))
+
+
+def count_rules(files: dict[str, Path]) -> dict[str, int]:
+    """Rules per transforms file, plus the rules DaLang skips (`{file} (unsupported)`) where there are any."""
+    entries: dict[str, int] = {}
+    for name, path in files.items():
+        rules = [rule for transform in _load(path)["transforms"].values() for rule in transform["rules"]]
+        stem = name.removesuffix(".json")
+        entries[stem] = len(rules)
+        if unsupported := sum(rule["type"] not in SUPPORTED_RULE_TYPES for rule in rules):
+            entries[f"{stem} (unsupported)"] = unsupported
+    return dict(sorted(entries.items()))
+
+
+@dataclass(frozen=True)
+class AssetFormat:
+    check: Callable[[dict[str, Path]], None]
+    count: Callable[[dict[str, Path]], dict[str, int]]
+
+
+# Files the apps download as they are, e.g. the deinflection rules DaLang loads at startup
+ASSET_FORMATS = {
+    "yomitan-deinflection-rules": AssetFormat(_check_deinflection_rules, count_rules),
+}
+
+
+def get_asset_format(name: str) -> AssetFormat:
+    if name not in ASSET_FORMATS:
+        raise ValueError(f"Unknown asset format '{name}', use one of {list(ASSET_FORMATS)}")
+    return ASSET_FORMATS[name]
+
+
+def validate_assets(files: dict[str, Path], format: str) -> None:
+    """Validates the asset files (names mapped to paths) against the rules of `format`, raises on the first problem."""
+    if not files:
+        raise ValueError("No asset files")
+    get_asset_format(format).check(files)

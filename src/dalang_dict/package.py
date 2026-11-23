@@ -1,5 +1,6 @@
-"""Writing bank files and packaging them as dictionary zips into out/."""
+"""Writing bank files, packaging them as dictionary zips into out/ and copying assets into out/."""
 
+import datetime
 import hashlib
 import json
 import os
@@ -7,13 +8,19 @@ import shutil
 import zipfile
 from pathlib import Path
 
+from dalang_dict.index import REVISION_ENV
 from dalang_dict.sources import used_sources
 from dalang_dict.validate import (
     BANK_FILE,
+    KRAD_PATTERN,
+    RADK_PATTERN,
+    SVG_EXTENSION,
     TEXT_BANK_FILE,
+    get_asset_format,
     get_format,
     is_audio_file,
     list_files,
+    validate_assets,
     validate_dictionary_dir,
 )
 
@@ -40,7 +47,8 @@ def write_banks(banks: dict[str, list], directory: Path, chunk_size: int = BANK_
 
 
 def count_entries(files: dict[str, Path]) -> dict[str, int]:
-    """Entries per bank (summed over its files, a text bank has one per line) and the number of audio files."""
+    """Entries per bank (summed over its files, a text bank has one per line), audio and SVG files and,
+    for radicals, the radicals and kanji."""
     entries: dict[str, int] = {}
     for arcname, path in files.items():
         if match := BANK_FILE.match(arcname):
@@ -49,6 +57,12 @@ def count_entries(files: dict[str, Path]) -> dict[str, int]:
             bank, count = "example_text_bank", len(path.read_text(encoding="utf-8").splitlines())
         elif is_audio_file(arcname):
             bank, count = "audios", 1
+        elif arcname.endswith(SVG_EXTENSION):
+            bank, count = "svgs", 1
+        elif RADK_PATTERN in arcname:
+            bank, count = "radicals", len(json.loads(path.read_text(encoding="utf-8"))["radicals"])
+        elif KRAD_PATTERN in arcname:
+            bank, count = "kanji", len(json.loads(path.read_text(encoding="utf-8"))["kanji"])
         else:
             continue
         entries[bank] = entries.get(bank, 0) + count
@@ -62,19 +76,27 @@ def build_manifest(index: dict, files: dict[str, Path], sources: dict[str, dict]
     without its revision, so a rebuild of unchanged data has the same hash.
     `sources` (see `used_sources()`) is listed in the release notes.
     """
-    digest = hashlib.sha256()
     index_without_revision = {k: v for k, v in index.items() if k != "revision"}
-    digest.update(json.dumps(index_without_revision, ensure_ascii=False, sort_keys=True).encode())
-    for arcname in sorted(files):
-        digest.update(arcname.encode())
-        digest.update(files[arcname].read_bytes())
     return {
         "format": format,
         "revision": index["revision"],
-        "contentSha256": digest.hexdigest(),
+        "contentSha256": _content_sha256(files, json.dumps(index_without_revision, ensure_ascii=False, sort_keys=True)),
         "entries": count_entries(files),
         "sources": sources,
     }
+
+
+def _content_sha256(files: dict[str, Path], prefix: str = "") -> str:
+    digest = hashlib.sha256(prefix.encode())
+    for arcname in sorted(files):
+        digest.update(arcname.encode())
+        digest.update(files[arcname].read_bytes())
+    return digest.hexdigest()
+
+
+def _write_manifest(out_dir: Path, package_name: str, manifest: dict) -> None:
+    manifest_json = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+    (out_dir / f"{package_name}.manifest.json").write_text(manifest_json, encoding="utf-8")
 
 
 def _place(source: Path, target: Path) -> None:
@@ -128,8 +150,40 @@ def package_dictionary(
             zipf.write(path, arcname=arcname)
     (out_dir / f"{package_name}.index.json").write_text(index_json, encoding="utf-8")
     manifest = build_manifest(index, content, used_sources() if sources is None else sources, format)
-    manifest_json = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
-    (out_dir / f"{package_name}.manifest.json").write_text(manifest_json, encoding="utf-8")
+    _write_manifest(out_dir, package_name, manifest)
 
     print(f"Exported {sum(manifest['entries'].values())} entries to '{zip_path}'.")
     return zip_path
+
+
+def package_assets(
+    package_name: str,
+    files: dict[str, Path],
+    format: str,
+    sources: dict[str, dict] | None = None,
+    out_dir: Path = DEFAULT_OUT_DIR,
+) -> list[Path]:
+    """Validates asset files of `format` (see `validate.ASSET_FORMATS`) and copies them into out/ as they are.
+
+    Assets are files the apps download without zip and index (e.g. deinflection rules), `files` maps their release
+    names to paths. `out/{package_name}.manifest.json` holds the content hash, counts and sources like the manifest
+    of a dictionary, so assets are only released when they change. The revision is the release tag (from the
+    environment) or today. Returns the paths in out/.
+    """
+    asset_format = get_asset_format(format)
+    validate_assets(files, format)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for name, path in sorted(files.items()):
+        shutil.copyfile(path, out_dir / name)
+        paths.append(out_dir / name)
+    manifest = {
+        "format": format,
+        "revision": os.environ.get(REVISION_ENV) or datetime.date.today().isoformat(),
+        "contentSha256": _content_sha256(files),
+        "entries": asset_format.count(files),
+        "sources": used_sources() if sources is None else sources,
+    }
+    _write_manifest(out_dir, package_name, manifest)
+    print(f"Exported {len(paths)} {format} files to '{out_dir}'.")
+    return paths
