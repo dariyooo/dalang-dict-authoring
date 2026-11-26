@@ -1,9 +1,10 @@
 {
   "repo": "yomidevs/yomitan",
   "path": "ext/data/schemas",
-  "commit": "d3c54c10264673eca0d66b970ef74cd5c8b048e3",
-  "commitDate": "2026-10-22T03:51:52Z",
+  "commit": "64b4eba7acc5ab2702504d863832261eb4fee2c7",
+  "commitDate": "2026-11-26T03:40:32Z",
   "files": [
+    "custom-audio-list-schema.json",
     "dictionary-index-schema.json",
     "dictionary-kanji-bank-v1-schema.json",
     "dictionary-kanji-bank-v3-schema.json",

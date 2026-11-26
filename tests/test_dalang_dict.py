@@ -115,6 +115,12 @@ def test_package_audio_dictionary(tmp_path):
     assert manifest["entries"] == {"audios": 1}
 
 
+def test_schema_version_is_the_newest_folder():
+    from dalang_dict.validate import SCHEMA_DIR, SCHEMA_VERSION
+
+    assert (SCHEMA_DIR.name, SCHEMA_VERSION) == ("v4", "4.0")
+
+
 def test_package_examples_from_written_banks(tmp_path):
     bank = _write(tmp_path / "bank.json", [{"sentence": "猫だ。"}, {"sentence": "犬だ。"}])
     package_dictionary(
@@ -134,6 +140,7 @@ INDEX = build_index("Test", "owner/repo", "Test_Dict")
 TERM_BANK = [["猫", "ねこ", "", "", 0, ["cat"], 1, ""]]
 RADK = {"radicals": {"一": {"strokeCount": 1, "code": None, "kanji": ["一"]}}}
 KRAD = {"kanji": {"一": ["一"]}}
+AUDIO_LIST = {"audioSources": [{"name": "Forvo", "url": "https://example.com/{term}.mp3"}]}
 KANJIVG = '<!-- kvg:element="x" --><g id="kvg:StrokePaths_04e00" kvg:element="一"></g>'
 
 # format, files (archive name -> content), expected error or None
@@ -143,21 +150,21 @@ FORMAT_CASES = [
     ("yomitan", {"index.json": INDEX, "term_bank_1.json": TERM_BANK, "audio_list.json": {}}, "DaKanji extensions"),
     (
         "dakanji-dictionary",
-        {"index.json": INDEX, "term_bank_1.json": TERM_BANK, "manual.md": "", "audio_list.json": {}},
+        {"index.json": INDEX, "term_bank_1.json": TERM_BANK, "manual.md": "", "audio_list.json": AUDIO_LIST},
         None,
     ),
     ("dakanji-examples", {"index.json": INDEX, "example_bank_1.json": [], "audios/a.opus": ""}, None),
     (
         "dakanji-examples",
-        {"index.json": INDEX, "example_text_bank_1.txt": "", "example_text_meta_bank_1.json": []},
+        {"index.json": INDEX, "example_text_bank_1.txt": "", "example_text_meta_bank_1.json": {"tags": ["novel"]}},
         None,
     ),
-    ("dakanji-examples", {"index.json": INDEX, "example_text_meta_bank_1.json": []}, "has no text bank"),
+    ("dakanji-examples", {"index.json": INDEX, "example_text_meta_bank_1.json": {}}, "has no text bank"),
     ("dakanji-examples", {"index.json": INDEX, "tag_bank_1.json": []}, "No example banks"),
     ("dakanji-examples", {"index.json": INDEX, "example_bank_1.json": [], "a.opus": ""}, "Unexpected files"),
     ("dakanji-examples", {"index.json": INDEX, "example_bank_1.json": [], "term_bank_1.json": []}, "Unknown bank"),
     ("dakanji-audio", {"yomitan_index.json": INDEX, "audios/猫【ねこ】(1).mp3": ""}, None),
-    ("dakanji-audio", {"yomitan_index.json": INDEX, "entries.json": {}, "audios/1.opus": ""}, None),
+    ("dakanji-audio", {"yomitan_index.json": INDEX, "entries.json": [], "audios/1.opus": ""}, None),
     ("dakanji-audio", {"yomitan_index.json": INDEX, "猫.mp3": ""}, "No audio files"),
     ("dakanji-audio", {"yomitan_index.json": INDEX, "audios/猫.mp3": "", "manual.pdf": ""}, "Unexpected files"),
     ("dakanji-audio", {"index.json": INDEX, "audios/猫.mp3": ""}, "yomitan_index.json"),
@@ -171,7 +178,7 @@ FORMAT_CASES = [
     (
         "dakanji-radicals",
         {"index.json": INDEX, "radkfile.json": RADK, "kradfile.json": {"kanji": {"一": "一"}}},
-        "list of radicals",
+        "is not of type 'array'",
     ),
     (
         "dakanji-radicals",
@@ -182,6 +189,19 @@ FORMAT_CASES = [
     ("dakanji-stroke-order", {"index.json": INDEX, "04e00.svg": '<!-- kvg:element="一" -->'}, "no kvg:element"),
     ("dakanji-stroke-order", {"index.json": INDEX, "kanji/04e00.svg": KANJIVG}, "zip root"),
     ("dakanji-stroke-order", {"index.json": INDEX}, "No SVG files"),
+    # DaKanji's own schemas
+    (
+        "dakanji-dictionary",
+        {"index.json": INDEX, "audio_list.json": {"audioSources": [{"url": "x"}]}},
+        "'name' is a required",
+    ),
+    (
+        "dakanji-examples",
+        {"index.json": INDEX, "example_bank_1.json": [{"tags": ["slang"]}]},
+        "'sentence' is a required",
+    ),
+    ("dakanji-audio", {"yomitan_index.json": INDEX, "index.json": {"files": {}}, "audios/1.opus": ""}, "'headwords'"),
+    ("yomitan", {"index.json": {**INDEX, "exampleTokenization": "auto"}, "term_bank_1.json": TERM_BANK}, "'manual'"),
 ]
 
 
@@ -231,9 +251,9 @@ SUFFIX_RULE = _rule("suffix", inflected="た", base="る")
 DEINFLECTION_CASES = [
     ("japanese-transforms.json", _transforms(SUFFIX_RULE, _rule("other", isInflected={})), None),
     ("japanese.json", _transforms(SUFFIX_RULE), "-transforms.json"),
-    ("japanese-transforms.json", {"language": "ja", "conditions": {}}, "'conditions' and 'transforms'"),
-    ("japanese-transforms.json", _transforms(_rule("regex")), "unknown type"),
-    ("japanese-transforms.json", _transforms(_rule("prefix", isInflected={})), "'inflected' and 'base'"),
+    ("japanese-transforms.json", {"language": "ja", "conditions": {}}, "'transforms' is a required property"),
+    ("japanese-transforms.json", _transforms(_rule("regex")), "'regex' is not one of"),
+    ("japanese-transforms.json", _transforms(_rule("prefix", isInflected={})), "'inflected' is a required property"),
     (
         "japanese-transforms.json",
         _transforms(_rule("suffix", inflected="た", base="る", conditionsIn=["x"])),

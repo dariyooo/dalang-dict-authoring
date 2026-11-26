@@ -1,7 +1,7 @@
 name: Sync Yomitan schemas
 
-# Vendors Yomitan's dictionary schemas, commits upstream changes and shows them in the run summary,
-# so a change in Yomitan's format is visible right away.
+# Vendors Yomitan's schemas into schemas/upstream/yomitan/, commits upstream changes and shows them in the run summary,
+# so a change in Yomitan's format is visible right away. Supporting it is a deliberate new version folder.
 
 on:
   schedule:
@@ -22,7 +22,7 @@ jobs:
       - name: Sync and check schemas
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run scripts/sync_yomitan_schemas.py
+        run: uv run scripts/sync_yomitan_schemas.py | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Run tests
         if: hashFiles('pyproject.toml') != ''
@@ -30,7 +30,7 @@ jobs:
 
       - name: Commit changes
         run: |
-          SCHEMAS=src/dalang_dict/schemas/yomitan
+          SCHEMAS=src/dalang_dict/schemas/upstream/yomitan
           git add "$SCHEMAS"
           # SOURCE.json always records the newest commit, only report real schema changes
           if git diff --cached --quiet -- "$SCHEMAS" ':!'"$SCHEMAS/SOURCE.json"; then
