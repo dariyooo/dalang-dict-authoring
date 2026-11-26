@@ -113,6 +113,20 @@ def test_package_audio_dictionary(tmp_path):
         assert zipf.namelist() == ["yomitan_index.json", "audios/猫【ねこ】.mp3"]
     manifest = json.loads((tmp_path / "out" / "Test_Audio.manifest.json").read_text(encoding="utf-8"))
     assert manifest["entries"] == {"audios": 1}
+    index = json.loads((tmp_path / "out" / "Test_Audio.index.json").read_text(encoding="utf-8"))
+    assert index["minimumDaLangVersion"] == "4.0"
+
+
+def test_yomitan_dictionaries_get_no_minimum_dalang_version(tmp_path):
+    package_dictionary("Test_Dict", INDEX, {"term_bank": TERM_BANK}, tmp_dir=tmp_path / "tmp", out_dir=tmp_path / "out")
+    index = json.loads((tmp_path / "out" / "Test_Dict.index.json").read_text(encoding="utf-8"))
+    assert "minimumDaLangVersion" not in index
+
+
+def test_schema_version_is_the_newest_folder():
+    from dalang_dict.validate import SCHEMA_DIR, SCHEMA_VERSION
+
+    assert (SCHEMA_DIR.name, SCHEMA_VERSION) == ("v4", "4.0")
 
 
 def test_schema_version_is_the_newest_folder():

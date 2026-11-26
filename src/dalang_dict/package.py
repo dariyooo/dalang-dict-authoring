@@ -14,6 +14,7 @@ from dalang_dict.validate import (
     BANK_FILE,
     KRAD_PATTERN,
     RADK_PATTERN,
+    SCHEMA_VERSION,
     SVG_EXTENSION,
     TEXT_BANK_FILE,
     get_asset_format,
@@ -126,9 +127,12 @@ def package_dictionary(
     `banks` are written as bank files, `extra_files` maps archive names to files that are added as is:
     banks written by the build itself, a manual, audio files (`audios/{name}`).
     `sources` defaults to every source fetched so far, pass a subset if the repo builds several dictionaries.
-    Returns the zip path.
+    A DaKanji format gets `minimumDaLangVersion` (the version of the schemas it is validated against) in its index,
+    so older apps refuse it. Returns the zip path.
     """
     dictionary_format = get_format(format)
+    if format != "yomitan":
+        index = {**index, "minimumDaLangVersion": index.get("minimumDaLangVersion", SCHEMA_VERSION)}
     package_dir = tmp_dir / package_name
     shutil.rmtree(package_dir, ignore_errors=True)
     package_dir.mkdir(parents=True)
