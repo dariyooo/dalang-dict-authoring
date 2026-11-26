@@ -80,7 +80,10 @@ Created with `dalang_dict.build_index()`:
 * Required: `title`, `author`, `url`, `description`, `attribution`.
   `sourceLanguage` / `targetLanguage` whenever they apply, DaLang relies on them.
 * The title identifies the dictionary in DaLang, do not change it after the first release.
-* DaLang extension: `exampleTokenization: "manual"` for example dictionaries whose sentences carry `[[form1||form2]]` markup.
+* DaLang extensions ([schema](../src/dalang_dict/schemas/v4/dakanji/index/README.md)):
+  * `exampleTokenization: "manual"` for example dictionaries whose sentences carry `[[form1||form2]]` markup.
+  * `minimumDaLangVersion`, set by `package_dictionary()` for every DaKanji format: the version of the schemas the
+    dictionary was validated against, so older apps refuse it instead of misreading it.
 
 ## Formats
 
@@ -130,12 +133,15 @@ Done by `dalang_dict.package_dictionary()`:
 Every dictionary is validated against the rules of its format before it is zipped:
 
 * The layout: which files the format has and where (the rules of DaLang's importer).
-* Yomitan's schemas, for the index of every format and the Yomitan banks.
-  They are vendored in `src/dalang_dict/schemas/yomitan/` and synced weekly by
-  `.github/workflows/sync-yomitan-schemas.yml`, which commits upstream changes.
-* Planned: DaKanji's schemas for the extensions (`audio_list.json`, example banks, audio `index.json` / `entries.json`),
-  synced the same way once they are published with the DaLang website.
-  Until then only their layout is checked.
+* The schemas of the latest DaLang version ([`src/dalang_dict/schemas/v*/`](../src/dalang_dict/schemas/README.md)):
+  Yomitan's for the index of every format and the Yomitan banks, DaKanji's own for everything else
+  (index extension, `audio_list.json`, example banks, audio `index.json` / `entries.json`, radicals,
+  deinflection rules).
+* This repo is the home of these formats: DaLang includes it as a submodule and reads its version folder from there.
+  A released version folder never changes, a format change is a new folder.
+* `.github/workflows/sync-yomitan-schemas.yml` syncs Yomitan's current schemas weekly into
+  `schemas/upstream/yomitan/` and reports which differ from the latest version folder.
+  Supporting a Yomitan change is a deliberate new version folder.
 
 ## CI and releases
 

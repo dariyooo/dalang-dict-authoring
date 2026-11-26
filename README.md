@@ -6,7 +6,7 @@ Utilities and repo template for building DaLang dictionaries (the Yomitan format
 * **Copier template** (`copier.yml`, `template/`): creates new dictionary repos that follow the standard and keeps them in sync with it.
 * **Reusable workflows** (`.github/workflows/dict-ci.yml`, `dict-release.yml`, `dict-update.yml`): CI, releases and automatic source updates of the dictionary repos.
 * **`dalang_dict` package** (`src/dalang_dict/`): locked source downloads, index.json, banks, validation per format, packaging and release manifests.
-* **Vendored schemas** (`src/dalang_dict/schemas/`): Yomitan's, synced weekly by `.github/workflows/sync-yomitan-schemas.yml`, DaKanji's are planned (see `schemas/dadb/README.md`).
+* **Schemas** (`src/dalang_dict/schemas/`, see its [README](src/dalang_dict/schemas/README.md)): the formats DaLang imports, one folder per DaLang version (`v4/`: Yomitan's and DaKanji's own), plus Yomitan's current schemas in `upstream/yomitan/`, synced weekly by `.github/workflows/sync-yomitan-schemas.yml`.
 
 ## New dictionary repo
 
@@ -27,6 +27,8 @@ This applies changes of the template (tooling, workflows, `.gitignore`, ...) and
 (`build.py`, `{module}/`, `tests/`, `README.md`), which the template only creates once.
 
 ## Sync the Yomitan schemas manually
+
+Updates `schemas/upstream/yomitan/` and lists the schemas that differ from the latest version folder.
 
 ``` bash
 uv run scripts/sync_yomitan_schemas.py
