@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DaKanji radk file",
+    "description": "The radicals of a dakanji-radicals archive with their stroke count, in a file whose name contains `radk` (e.g. radkfile.json). Keys other than the ones below are ignored.",
+    "type": "object",
+    "required": [
+        "radicals"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Version of the source data, not read."
+        },
+        "radicals": {
+            "type": "object",
+            "minProperties": 1,
+            "description": "Maps every radical to its data. A radical with a `code` is stored under the character DaLang maps that code to.",
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "strokeCount"
+                ],
+                "properties": {
+                    "strokeCount": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "RADKFILE's JIS code for radicals without their own character, null otherwise."
+                    },
+                    "kanji": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Kanji containing the radical, not read (the krad file links them)."
+                    }
+                }
+            }
+        }
+    }
+}

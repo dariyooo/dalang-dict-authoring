@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audio Index Format",
+  "description": "Schema for index.json audio mappings. `meta` and each file's `pitch_pattern` are not read: `meta` repeats `yomitan_index.json` and where the files sit, `pitch_pattern` writes `pitch_number` in another notation.",
+  "type": "object",
+  "properties": {
+    "headwords": {
+      "type": "object",
+      "description": "Maps a headword (term) to an array of audio filenames. A name that is not a key of \"files\" is skipped; the import warns once with the count. A headword holding `〓` or `{CID…}` (a glyph the source could not write) is skipped; the import warns once with the count.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "Maps an audio filename to its reading and pitch metadata.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "kana_reading": {
+            "type": "string",
+            "description": "The reading of the term. A file without it, or with it empty, has no reading."
+          },
+          "pitch_number": {
+            "type": "string",
+            "description": "The downstep position as a string of digits (\"0\" heiban), stored with the pattern computed from the reading, one letter per mora. `?` means unknown: no pitch is stored, without a warning. A number without a reading or past the reading's morae, or a value that is not digits, stores no pitch: the recording is kept and the import warns once with the count."
+          }
+        }
+      }
+    }
+  },
+  "required": ["headwords", "files"]
+}

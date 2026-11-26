@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DaKanji krad file",
+    "description": "The radicals of every kanji of a dakanji-radicals archive, in a file whose name contains `krad` (e.g. kradfile.json). Keys other than the ones below are ignored.",
+    "type": "object",
+    "required": [
+        "kanji"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Version of the source data, not read."
+        },
+        "kanji": {
+            "type": "object",
+            "minProperties": 1,
+            "description": "Maps every kanji to its radicals. Every radical must be a radical of the radk file (after DaLang's lookup of variant forms), the import fails otherwise. Empty strings and spaces are skipped.",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

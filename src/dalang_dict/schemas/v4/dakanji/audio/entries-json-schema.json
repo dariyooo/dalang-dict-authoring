@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audio Entries Format",
+  "description": "Schema for entries.json audio mappings. Keys this schema does not list are not read.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "description": "An entry without accents or subentries adds no audio metadata.",
+    "properties": {
+      "kanji": {
+        "type": "array",
+        "description": "List of terms associated with this entry. May be omitted or empty when kana is given. A string may join spellings with `，`; each is a term.",
+        "items": { "type": "string" }
+      },
+      "kana": {
+        "type": "string",
+        "description": "The word in kana, used as the term when kanji is empty. A recording of the word whose pronunciation says the same is read as it; another is read as its pronunciation in hiragana, `ー` kept. A subentry's recordings are read as it."
+      },
+      "accents": {
+        "type": "array",
+        "description": "Recordings of the word.",
+        "items": { "$ref": "#/definitions/recording" }
+      },
+      "subentries": {
+        "type": "array",
+        "description": "Recordings of a phrase or count under the word. They are stored under the entry's terms and kana, labelled by `head`, else by `number`, as written.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "head": { "type": "string" },
+            "number": { "type": "string" },
+            "accents": { "type": "array", "items": { "$ref": "#/definitions/recording" } }
+          },
+          "anyOf": [{ "required": ["head"] }, { "required": ["number"] }]
+        }
+      },
+      "notes": {
+        "type": "array",
+        "description": "Notes the parts of a recording point to by `key`. A recording keeps the `text` of each note its parts point to, as written, in the order met. A note no recording points to is not stored. An item without a string `key` and `text` skips the entry.",
+        "items": {
+          "type": "object",
+          "properties": { "key": { "type": "string" }, "text": { "type": "string" } },
+          "required": ["key", "text"]
+        }
+      }
+    }
+  },
+  "definitions": {
+    "recording": {
+      "type": "object",
+      "properties": {
+        "soundFile": {
+          "type": ["string", "null"],
+          "description": "Path to the audio file in the archive. An accent without it, or with null, is not imported."
+        },
+        "notStandardButPermissible": {
+          "type": "boolean",
+          "description": "True tags the recording `notStandardButPermissible`. Another type skips the entry."
+        },
+        "accent": {
+          "type": "array",
+          "description": "The accent phrases of one recording, in order. A compound's pattern is the parts' patterns joined and has no downstep position.",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/part" }
+        }
+      },
+      "required": ["accent"]
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "pronunciation": {
+          "type": "string",
+          "description": "How the part is spoken, in katakana with its marks (`キ゚`, `ー`). The parts' pronunciations joined are stored and shown as written."
+        },
+        "pitchAccent": {
+          "type": ["integer", "string"],
+          "description": "An integer is the downstep position (0 heiban), stored with the pattern computed from it, one letter per mora of the pronunciation. A string is the pattern, one `H` or `L` per mora of the pronunciation. A position past the morae, or a string of other letters or another length, stores no pitch: the recording is kept and the import warns once with the count. Another type skips the entry."
+        },
+        "silencedMora": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "The devoiced morae of the part, 1 being its first; stored as the recording's devoiced morae, counted over the whole accent. A mora below 1 or past the part's morae is not stored: the recording keeps its other devoiced morae and the import warns once with the count. Anything but a list of integers skips the entry."
+        },
+        "notStandardButPermissible": {
+          "type": "boolean",
+          "description": "True tags the recording `notStandardButPermissible`. Another type skips the entry."
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keys of the entry's `notes` that apply to the recording. A key the entry's notes do not have is skipped; the import warns once with the count and the first three entries."
+        }
+      },
+      "required": ["pronunciation"]
+    }
+  }
+}

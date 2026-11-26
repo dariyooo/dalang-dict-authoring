@@ -1,0 +1,18 @@
+{
+    "$id": "dakanjiIndexExtension",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DaKanji extension of the Yomitan index.json",
+    "description": "Keys DaKanji reads from index.json on top of dictionary-index-schema.json.",
+    "type": "object",
+    "properties": {
+        "exampleTokenization": {
+            "const": "manual",
+            "description": "For an example dictionary: the author wrote every searchable word form as inline markup, so the language processor derives none. Any other value is ignored."
+        },
+        "minimumDaLangVersion": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)*$",
+            "description": "Oldest DaLang (and so app) version that reads every file of this dictionary, e.g. \"4.0\". Set for DaKanji formats, from the schema version the dictionary was built against; an older app refuses the import instead of misreading it."
+        }
+    }
+}

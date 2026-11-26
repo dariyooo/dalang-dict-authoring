@@ -1,0 +1,56 @@
+{
+    "$id": "dakanjiAudioList",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DaKanji audio source list",
+    "description": "audio_list.json. Every source is imported as a remote URL source; a root \"type\" is ignored. A source that breaks this schema is skipped; the import warns once with the count and the first three sources. A file without an \"audioSources\" list stops the import.",
+    "type": "object",
+    "required": [
+        "audioSources"
+    ],
+    "properties": {
+        "audioSources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "anyOf": [
+                    {
+                        "required": [
+                            "uri"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "url"
+                        ]
+                    }
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Must not be empty after trimming."
+                    },
+                    "uri": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Read before \"url\". Must not be empty after trimming."
+                    },
+                    "url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Read when \"uri\" is absent. Must not be empty after trimming."
+                    },
+                    "ttsLanguage": {
+                        "type": "string"
+                    },
+                    "ttsVoice": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

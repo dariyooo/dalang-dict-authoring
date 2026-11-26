@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Example Sentence Bank",
+  "description": "Schema for a chunked dictionary example sentence file",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/Sentence"
+  },
+  "definitions": {
+    "Sentence": {
+      "type": "object",
+      "properties": {
+        "groupIds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer"
+          },
+          "description": "Numeric IDs matchable across dictionaries to group sentences (one example can belong to multiple groups). Can be null if the sentence has no group(s)."
+        },
+        "sentence": {
+          "type": "string",
+          "description": "The complete example sentence. A blank sentence (empty or only whitespace) is skipped; the import warns once with the count."
+        },
+        "quality": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "How good an example this sentence is, from 1 (worst) to 100 (best), fractions allowed. Search results are ordered by it, best first. A value outside 1-100 is clamped; the import warns once with the count. Can be null or omitted; the importer then rates the sentence with its text quality model where it supports the sentence's language, and otherwise derives a stable default from the sentence text."
+        },
+        "tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "List of string tags (e.g., 'slang', 'idiom'). These reference definitions provided in Yomitan tag_bank_*.json files (schema: '../../yomitan/dictionary-tag-bank-v3-schema.json'). Blank tags are ignored."
+        },
+        "stats": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Stat"
+          },
+          "description": "List of numeric stats associated with the sentence (e.g., frequency, JLPT level, difficulty)."
+        },
+        "audios": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Audio"
+          },
+          "description": "List of available audio pronunciations."
+        }
+      },
+      "required": [
+        "sentence"
+      ]
+    },
+    "Audio": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Empty when omitted or null. Either a path to a file inside the archive (played locally) or an http(s) url the data is fetched from at runtime."
+        },
+        "tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags specific to this audio file (e.g., 'native', 'female'). These map directly to definitions provided in Yomitan tag_bank_*.json files. Blank tags are ignored."
+        },
+        "stats": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Stat"
+          },
+          "description": "Numeric stats specific to this audio file (e.g., clarity score, speed)."
+        }
+      }
+    },
+    "Stat": {
+      "type": "object",
+      "properties": {
+        "statName": {
+          "type": "string",
+          "description": "The backend identifier for the stat (e.g., 'freq', 'JLPT', 'quality')."
+        },
+        "displayName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional user-friendly label for the stat (e.g., 'Frequency', 'JLPT Level')."
+        },
+        "value": {
+          "type": "number",
+          "description": "The strictly numeric value used for sorting/filtering in the database."
+        },
+        "displayValue": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional formatted representation of the value (e.g., 'N5', 'uncommon')."
+        }
+      },
+      "required": [
+        "statName",
+        "value"
+      ]
+    }
+  }
+}

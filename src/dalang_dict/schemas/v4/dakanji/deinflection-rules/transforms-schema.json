@@ -1,0 +1,158 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Deinflection rules",
+    "description": "`{language}-transforms.json`: Yomitan's deinflection rules of one language, converted from its `*-transforms.js` to JSON. Every condition a rule or sub condition uses must be a key of `conditions`; JSON Schema cannot express that, the validator of dalang-dict-utils checks it.",
+    "type": "object",
+    "required": [
+        "language",
+        "conditions",
+        "transforms"
+    ],
+    "properties": {
+        "language": {
+            "type": "string",
+            "description": "ISO 639-1 (or -3) code of the language."
+        },
+        "conditions": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "isDictionaryForm": {
+                        "type": "boolean"
+                    },
+                    "subConditions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "i18n": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "language"
+                            ],
+                            "properties": {
+                                "language": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "transforms": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "rules"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "i18n": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "language"
+                            ],
+                            "properties": {
+                                "language": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Rule": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "enum": [
+                        "suffix",
+                        "prefix",
+                        "wholeWord",
+                        "other"
+                    ],
+                    "description": "`other` (Yomitan's regex rules) is skipped by the apps."
+                },
+                "inflected": {
+                    "type": "string"
+                },
+                "base": {
+                    "type": "string"
+                },
+                "conditionsIn": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "conditionsOut": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "if": {
+                "properties": {
+                    "type": {
+                        "enum": [
+                            "suffix",
+                            "prefix",
+                            "wholeWord"
+                        ]
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "inflected",
+                    "base"
+                ]
+            }
+        }
+    }
+}

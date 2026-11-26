@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Example Text Meta Bank",
+  "description": "Schema for example_text_meta_bank_N.json: metadata applied to every sentence extracted from example_text_bank_N.txt. Keys other than the ones below are ignored.",
+  "type": "object",
+  "properties": {
+    "groupIds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer"
+      },
+      "description": "Numeric group IDs given to every sentence of the text bank."
+    },
+    "tags": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags of the text bank's file. They reference Yomitan tag_bank_*.json definitions (schema: '../../yomitan/dictionary-tag-bank-v3-schema.json'); blank tags are ignored."
+    },
+    "stats": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "example-bank-schema.json#/definitions/Stat"
+      },
+      "description": "Stats given to every sentence of the text bank."
+    }
+  }
+}
