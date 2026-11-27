@@ -129,12 +129,6 @@ def test_schema_version_is_the_newest_folder():
     assert (SCHEMA_DIR.name, SCHEMA_VERSION) == ("v4", "4.0")
 
 
-def test_schema_version_is_the_newest_folder():
-    from dalang_dict.validate import SCHEMA_DIR, SCHEMA_VERSION
-
-    assert (SCHEMA_DIR.name, SCHEMA_VERSION) == ("v4", "4.0")
-
-
 def test_package_examples_from_written_banks(tmp_path):
     bank = _write(tmp_path / "bank.json", [{"sentence": "猫だ。"}, {"sentence": "犬だ。"}])
     package_dictionary(
