@@ -13,7 +13,7 @@ name: Dictionary Update
 #     contents: write
 #   jobs:
 #     update:
-#       uses: dariyooo/dalang-dict-utils/.github/workflows/dict-update.yml@<tag>
+#       uses: dariyooo/dalang-dict-authoring/.github/workflows/dict-update.yml@<tag>
 
 on:
   workflow_call:
@@ -78,6 +78,7 @@ jobs:
       - name: Build dictionaries
         if: steps.sources.outputs.changed == 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           DALANG_DICT_REVISION: ${{ steps.tag.outputs.value }}
         run: ${{ inputs.build-command }}
 
@@ -132,5 +133,8 @@ jobs:
             echo "Release $TAG already exists, replacing it."
             gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
           fi
-          gh release create "$TAG" out/*.zip out/*.json --repo "$GITHUB_REPOSITORY" --title "$TAG" --latest \
+          # Asset releases (e.g. deinflection rules) have no zips, an unmatched glob would be passed on literally
+          shopt -s nullglob
+          assets=(out/*.zip out/*.json)
+          gh release create "$TAG" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --title "$TAG" --latest \
             --notes-file tmp/release-notes.md --generate-notes
