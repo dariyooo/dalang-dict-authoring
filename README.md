@@ -11,7 +11,7 @@ Utilities and repo template for building DaLang dictionaries (the Yomitan format
 ## New dictionary repo
 
 ``` bash
-uvx copier copy --trust gh:dariyooo/dalang-dict-utils <repo-name>
+uvx copier copy --trust gh:dariyooo/dalang-dict-authoring <repo-name>
 ```
 
 Copier asks for the repo name (`{script}-{content}-{target}`, e.g. `kanji-jlpt-levels-yomitan`), a description and a few defaults.
