@@ -1,6 +1,6 @@
 # Copier template for DaLang dictionary repos, see docs/repo-standard.md.
 #
-#   new repo:       uvx copier copy --trust gh:dariyooo/dalang-dict-utils <repo>
+#   new repo:       uvx copier copy --trust gh:dariyooo/dalang-dict-authoring <repo>
 #   update a repo:  uvx copier update --trust
 
 _subdirectory: template
@@ -51,7 +51,7 @@ python_version:
 dalang_dict_utils_tag:
   type: str
   help: dalang-dict-utils tag for the package and the reusable workflows
-  default: v0.4.1
+  default: v0.4.2
 
 node_version:
   type: str
