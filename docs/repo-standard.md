@@ -35,7 +35,7 @@ tests/                pytest tests
 tmp/                  git ignored except .gitkeep: tmp/sources/ download cache, tmp/{asset}/ uncompressed dictionary
 out/                  git ignored except .gitkeep: release assets only (zips + .index.json + .manifest.json)
 stats/                optional, committed build statistics
-.github/workflows/    ci.yml + release.yml, only call the reusable workflows of dalang-dict-utils
+.github/workflows/    ci.yml + release.yml, only call the reusable workflows of dalang-dict-authoring
 .copier-answers.yml   managed by Copier, do not edit
 ```
 
@@ -46,7 +46,7 @@ stats/                optional, committed build statistics
 * uv with a committed `uv.lock`, Python version in `.python-version` (3.12). No requirements.txt.
 * ruff for linting and formatting (line length 120, rules `E F I UP B`, `vendored_sources/` excluded), pyright for type checking.
 * pytest for tests. No unittest.
-* `dalang-dict-utils` as dependency, pinned to a tag.
+* The `dalang-dict-utils` package of dalang-dict-authoring as dependency, pinned to a tag.
 
 ## Sources
 

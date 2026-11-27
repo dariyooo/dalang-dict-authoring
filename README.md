@@ -1,4 +1,4 @@
-# dalang-dict-utils
+# dalang-dict-authoring
 
 Utilities and repo template for building DaLang dictionaries (the Yomitan format and the DaKanji formats for examples, audio, radicals, stroke order and dictionaries with extensions) and assets like deinflection rules.
 

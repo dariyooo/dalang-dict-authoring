@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Deinflection rules",
-    "description": "`{language}-transforms.json`: Yomitan's deinflection rules of one language, converted from its `*-transforms.js` to JSON. Every condition a rule or sub condition uses must be a key of `conditions`; JSON Schema cannot express that, the validator of dalang-dict-utils checks it.",
+    "description": "`{language}-transforms.json`: Yomitan's deinflection rules of one language, converted from its `*-transforms.js` to JSON. Every condition a rule or sub condition uses must be a key of `conditions`; JSON Schema cannot express that, the validator of dalang-dict-authoring checks it.",
     "type": "object",
     "required": [
         "language",

@@ -32,7 +32,7 @@ PIN_KEYS = ("version", "sha256")
 DESCRIPTION_KEYS = ("used_for",)
 
 # Identifies the downloads, some servers (e.g. jiten.moe) reject the fake browser agents bots use
-USER_AGENT = "dalang-dict-utils (+https://github.com/dariyooo/dalang-dict-authoring)"
+USER_AGENT = "dalang-dict-authoring (+https://github.com/dariyooo/dalang-dict-authoring)"
 DOWNLOAD_RETRIES = 10
 # Client errors that can go away on their own, every other 4xx fails the download right away
 RETRY_CLIENT_ERRORS = {408, 416, 429}
