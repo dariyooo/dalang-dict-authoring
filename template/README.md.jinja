@@ -5,7 +5,9 @@
 ## Sources
 
 Where the data comes from and how the dictionary is derived from it.
-{% if source_updates %}
+{% if external_release %}
+The source data is not in this repo: the build gets it as input from the repo that releases the dictionary.
+{%- elif source_updates %}
 The sources are locked to a version in `sources.lock.json`.
 The *Update* workflow checks them weekly, commits newer versions and releases the dictionary if it changed.
 {%- else %}
@@ -42,6 +44,11 @@ The repo follows the [DaLang dictionary repo standard](https://github.com/dariyo
 update the shared setup with `uvx copier update --trust`.
 
 ## Release
+{% if external_release %}
+This repo holds the build code only. The dictionary is built and released from another repo, which has the source
+data: it checks out this repo, runs the build with the data and publishes the result as a release here.
+Installed dictionaries pick up new releases through "Check for updates".
+{% else %}
 
 Push a tag with today's date:
 
@@ -52,5 +59,6 @@ git tag 2026-11-01 && git push origin 2026-11-01
 The *Release* workflow runs the checks, builds the dictionary with the tag as revision and publishes it as the GitHub release of the tag.
 To redo a release, push the tag again with `git tag -f 2026-11-01 && git push -f origin 2026-11-01`.
 Installed dictionaries pick up new releases through "Check for updates".
+{% endif %}
 
 ## License

@@ -147,6 +147,9 @@ Every dictionary is validated against the rules of its format before it is zippe
 
 * `ci.yml` runs on push and pull request: ruff check, ruff format check, pyright, pytest.
 * A build that runs JavaScript sets `node_version` in Copier, the workflows then set up Node.js.
+* A dictionary whose source data must not be in a public repo (e.g. a private corpus) sets `external_release`:
+  the repo keeps the build code and its CI, a workflow in the repo with the data builds it and publishes the release
+  here with a token. There is no release or update workflow in the repo itself.
 * Build outputs a repo commits besides `out/` (e.g. files another repo reads through a submodule) are listed in
   `committed_outputs`: the update commits them with the lock and a release fails if the build changed them.
 * `release.yml` runs on a pushed tag `YYYY-MM-DD`: CI, `uv run build.py` with the tag as revision

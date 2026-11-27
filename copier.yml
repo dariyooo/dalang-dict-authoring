@@ -65,18 +65,26 @@ committed_outputs:
     empty if none. The update commits them with the lock, a release fails if they are not up to date
   default: ""
 
+external_release:
+  type: bool
+  help: >-
+    Is the dictionary built and released from another repo (e.g. a private one with the source data)?
+    Yes: no release and update workflows here, only CI; the build reads its input from a path it is given
+  default: false
+
 source_updates:
   type: bool
   help: >-
     Do the sources change? Yes: sources are fetched, locked in sources.lock.json and a weekly workflow
     rebuilds and releases on changes. No: frozen data is vendored in vendored_sources/ and released manually
   default: true
+  when: "{{ not external_release }}"
 
 update_cron:
   type: str
   help: Cron of the auto update workflow
   default: "0 4 * * 1"
-  when: "{{ source_updates }}"
+  when: "{{ source_updates and not external_release }}"
 
 # Creates uv.lock on copy. On update, tasks run before the repo's own changes (e.g. extra dependencies) are merged
 # back, so the lock is updated by an "after" migration instead, which sees the merged pyproject.toml.
