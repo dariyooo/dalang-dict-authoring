@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   ci:
-    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-ci.yml@{{ dalang_dict_utils_tag }}
+    uses: dariyooo/dalang-dict-authoring/.github/workflows/dict-ci.yml@{{ dalang_dict_utils_tag }}
 {%- if node_version %}
     with:
       node-version: "{{ node_version }}"
@@ -17,7 +17,7 @@ jobs:
 
   release:
     needs: ci
-    uses: dariyooo/dalang-dict-utils/.github/workflows/dict-release.yml@{{ dalang_dict_utils_tag }}
+    uses: dariyooo/dalang-dict-authoring/.github/workflows/dict-release.yml@{{ dalang_dict_utils_tag }}
 {%- if node_version or committed_outputs %}
     with:
 {%- if node_version %}

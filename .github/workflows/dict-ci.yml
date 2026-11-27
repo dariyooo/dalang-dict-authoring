@@ -4,7 +4,7 @@ name: Dictionary CI
 #
 #   jobs:
 #     ci:
-#       uses: dariyooo/dalang-dict-utils/.github/workflows/dict-ci.yml@<tag>
+#       uses: dariyooo/dalang-dict-authoring/.github/workflows/dict-ci.yml@<tag>
 
 on:
   workflow_call:
