@@ -50,8 +50,8 @@ python_version:
 
 dalang_dict_utils_tag:
   type: str
-  help: dalang-dict-utils tag for the package and the reusable workflows
-  default: v0.4.2
+  help: dalang-dict-authoring tag for the package and the reusable workflows
+  default: v0.5.0
 
 node_version:
   type: str
